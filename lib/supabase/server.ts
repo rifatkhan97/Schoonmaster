@@ -3,14 +3,16 @@ import { cookies } from 'next/headers';
 
 /**
  * Supabase client for use in Server Components and API Route Handlers.
- * Uses the user's session cookie automatically.
+ * Fallbacks prevent build failures when env vars are missing during CI/Vercel build phase.
  */
 export async function createClient() {
   const cookieStore = await cookies();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll() {
@@ -37,9 +39,12 @@ export async function createClient() {
  */
 export function createAdminClient() {
   const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key';
+
   return createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    url,
+    serviceKey,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 }
