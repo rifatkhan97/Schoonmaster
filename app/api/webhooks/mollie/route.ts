@@ -17,7 +17,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing order ID' }, { status: 400 });
   }
 
-  const mollie = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY! });
+  const apiKey = process.env.MOLLIE_API_KEY;
+  if (!apiKey || apiKey.includes('placeholder')) {
+    return NextResponse.json({ received: true });
+  }
+
+  const mollie = createMollieClient({ apiKey });
   const mollieOrder = await mollie.orders.get(mollieOrderId);
 
   const admin = createAdminClient();
@@ -75,26 +80,27 @@ export async function POST(request: NextRequest) {
     if (sendgridKey && !sendgridKey.includes('placeholder')) {
       try {
         sgMail.setApiKey(sendgridKey);
-      await sgMail.send({
-        to: order.customer_email,
-        from: { email: process.env.SENDGRID_FROM_EMAIL!, name: process.env.SENDGRID_FROM_NAME ?? 'Schoonmaster' },
-        subject: `Payment Confirmed — Order #${order.id.slice(0, 8).toUpperCase()}`,
-        html: `
-          <div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#0f1117;color:#e0e0e0;padding:40px;border-radius:12px;">
-            <div style="background:linear-gradient(135deg,#10a898,#2558a0);border-radius:8px;padding:24px;text-align:center;margin-bottom:32px;">
-              <h1 style="color:white;margin:0;font-size:24px;">Payment Confirmed ✅</h1>
+        await sgMail.send({
+          to: order.customer_email,
+          from: { email: process.env.SENDGRID_FROM_EMAIL!, name: process.env.SENDGRID_FROM_NAME ?? 'Schoonmaster' },
+          subject: `Payment Confirmed — Order #${order.id.slice(0, 8).toUpperCase()}`,
+          html: `
+            <div style="font-family:sans-serif;max-width:600px;margin:0 auto;background:#0f1117;color:#e0e0e0;padding:40px;border-radius:12px;">
+              <div style="background:linear-gradient(135deg,#10a898,#2558a0);border-radius:8px;padding:24px;text-align:center;margin-bottom:32px;">
+                <h1 style="color:white;margin:0;font-size:24px;">Payment Confirmed ✅</h1>
+              </div>
+              <p>Dear ${order.customer_name},</p>
+              <p>Your payment of <strong>€${(order.total_cents / 100).toFixed(2)}</strong> has been confirmed.</p>
+              <p><strong>Order reference:</strong> #${order.id.slice(0, 8).toUpperCase()}</p>
+              <p>Our team will be in touch shortly to coordinate your service or delivery.</p>
+              <hr style="border:none;border-top:1px solid #333;margin:24px 0;" />
+              <p style="font-size:12px;color:#888;">Schoonmaster BV · Operations Platform</p>
             </div>
-            <p>Dear ${order.customer_name},</p>
-            <p>Your payment of <strong>€${(order.total_cents / 100).toFixed(2)}</strong> has been confirmed.</p>
-            <p><strong>Order reference:</strong> #${order.id.slice(0, 8).toUpperCase()}</p>
-            <p>Our team will be in touch shortly to coordinate your service or delivery.</p>
-            <hr style="border:none;border-top:1px solid #333;margin:24px 0;" />
-            <p style="font-size:12px;color:#888;">Schoonmaster BV · Operations Platform</p>
-          </div>
-        `,
-      });
-    } catch (emailError) {
-      console.error('Failed to send confirmation email:', emailError);
+          `,
+        });
+      } catch (emailError) {
+        console.error('Failed to send confirmation email:', emailError);
+      }
     }
   }
 
