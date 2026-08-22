@@ -3,7 +3,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 type UserRole = 'ADM' | 'MGR' | 'CLN' | 'AUD';
 
-// Route protection config
 const PROTECTED_ROUTES: Record<string, UserRole[]> = {
   '/cleaner': ['CLN', 'ADM'],     // Admins can preview cleaner portal
   '/admin': ['ADM', 'MGR'],
@@ -31,33 +30,43 @@ const ROLE_HOME: Record<UserRole, string> = {
 };
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  });
+  const pathname = request.nextUrl.pathname;
+  let response = NextResponse.next({ request });
 
+  // 1. Determine route protection type
+  const isProtected = Object.keys(PROTECTED_ROUTES).some(prefix => pathname.startsWith(prefix));
+  const isPublic = PUBLIC_ROUTES.some(r => pathname === r || (r !== '/' && pathname.startsWith(r + '/')));
+
+  // Check if request carries Supabase auth session cookies
+  const allCookies = request.cookies.getAll();
+  const hasAuthCookie = allCookies.some(c => c.name.startsWith('sb-') && c.name.includes('-auth-token'));
+
+  // Unauthenticated guest visiting public route -> zero network calls, zero risk
+  if (!hasAuthCookie && isPublic) {
+    return response;
+  }
+
+  // Unauthenticated guest visiting protected route -> redirect to login immediately
+  if (!hasAuthCookie && isProtected) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Environment variable validation
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const pathname = request.nextUrl.pathname;
 
-  // Check if Supabase env vars are properly configured
-  const isConfigured = Boolean(
-    url && anonKey && !url.includes('placeholder') && !anonKey.includes('placeholder')
-  );
-
-  // Fast-path: if env vars are missing or placeholders, allow public routes safely
-  if (!isConfigured) {
-    for (const routePrefix of Object.keys(PROTECTED_ROUTES)) {
-      if (pathname.startsWith(routePrefix)) {
-        return NextResponse.redirect(new URL('/login', request.url));
-      }
+  if (!url || !anonKey || url.includes('placeholder')) {
+    if (isProtected) {
+      return NextResponse.redirect(new URL('/login', request.url));
     }
     return response;
   }
 
+  // 2. Validate session with Supabase only when auth cookies are present
   try {
-    const supabase = createServerClient(url!, anonKey!, {
+    const supabase = createServerClient(url, anonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -68,7 +77,7 @@ export async function middleware(request: NextRequest) {
               response.cookies.set(name, value, options)
             );
           } catch {
-            // Ignore if response is immutable
+            // Ignore write errors on immutable response
           }
         },
       },
@@ -77,58 +86,51 @@ export async function middleware(request: NextRequest) {
     const { data } = await supabase.auth.getUser();
     const user = data?.user ?? null;
 
-    // Allow public routes unconditionally
-    if (PUBLIC_ROUTES.some(r => pathname === r || pathname.startsWith(r + '/'))) {
-      if (pathname === '/login' && user) {
-        try {
-          const { data: profile } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-          const role = profile?.role as UserRole;
-          const home = ROLE_HOME[role] || '/';
-          return NextResponse.redirect(new URL(home, request.url));
-        } catch {
-          return response;
-        }
-      }
-      return response;
+    // Logged-in user visiting /login -> redirect to their home portal
+    if (pathname === '/login' && user) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      const role = profile?.role as UserRole;
+      const home = ROLE_HOME[role] || '/';
+      return NextResponse.redirect(new URL(home, request.url));
     }
 
-    // All other routes require authentication
-    if (!user) {
+    if (!user && isProtected) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('next', pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    // Fetch user profile for role-based routing
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role, is_active, tenant_id')
-      .eq('id', user.id)
-      .single();
+    if (user && isProtected) {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role, is_active, tenant_id')
+        .eq('id', user.id)
+        .single();
 
-    if (!profile || !profile.is_active) {
-      await supabase.auth.signOut().catch(() => {});
-      return NextResponse.redirect(new URL('/login?error=account_disabled', request.url));
-    }
-
-    const userRole = profile.role as UserRole;
-
-    for (const [routePrefix, allowedRoles] of Object.entries(PROTECTED_ROUTES)) {
-      if (pathname.startsWith(routePrefix)) {
-        if (!allowedRoles.includes(userRole)) {
-          return NextResponse.redirect(new URL(ROLE_HOME[userRole] || '/', request.url));
-        }
-        break;
+      if (!profile || !profile.is_active) {
+        await supabase.auth.signOut().catch(() => {});
+        return NextResponse.redirect(new URL('/login?error=account_disabled', request.url));
       }
-    }
 
-    response.headers.set('x-user-role', userRole);
-    response.headers.set('x-user-id', user.id);
-    response.headers.set('x-tenant-id', profile.tenant_id);
+      const userRole = profile.role as UserRole;
+
+      for (const [routePrefix, allowedRoles] of Object.entries(PROTECTED_ROUTES)) {
+        if (pathname.startsWith(routePrefix)) {
+          if (!allowedRoles.includes(userRole)) {
+            return NextResponse.redirect(new URL(ROLE_HOME[userRole] || '/', request.url));
+          }
+          break;
+        }
+      }
+
+      response.headers.set('x-user-role', userRole);
+      response.headers.set('x-user-id', user.id);
+      response.headers.set('x-tenant-id', profile.tenant_id);
+    }
 
     return response;
   } catch (err) {
