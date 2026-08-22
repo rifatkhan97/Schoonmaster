@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import type { UserRole } from '@/types';
+
+type UserRole = 'ADM' | 'MGR' | 'CLN' | 'AUD';
 
 // Route protection config
 const PROTECTED_ROUTES: Record<string, UserRole[]> = {
@@ -62,10 +63,13 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            );
+          } catch {
+            // Ignore if response is immutable
+          }
         },
       },
     });
