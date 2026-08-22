@@ -3,12 +3,17 @@ import { cookies } from 'next/headers';
 
 /**
  * Supabase client for use in Server Components and API Route Handlers.
- * Fallbacks prevent build failures when env vars are missing during CI/Vercel build phase.
+ * Supports all standard Supabase and Vercel Integration env var aliases.
  */
 export async function createClient() {
   const cookieStore = await cookies();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://placeholder.supabase.co';
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
+    'placeholder-anon-key';
 
   return createServerClient(
     url,
@@ -35,12 +40,14 @@ export async function createClient() {
 /**
  * Supabase admin client using the service role key.
  * Use ONLY in trusted server-side contexts (API routes, cron jobs).
- * Never import this in Client Components.
  */
 export function createAdminClient() {
   const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key';
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'https://placeholder.supabase.co';
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    'placeholder-service-role-key';
 
   return createSupabaseClient(
     url,
