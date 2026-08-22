@@ -81,10 +81,8 @@ function LoginContent() {
         const isCleaner = resolvedEmail.includes('cleaner') || cleanPass === 'cleaner';
         const destination = isCleaner ? '/cleaner/dashboard' : '/admin/dashboard';
         
-        // Set client session cookies for demo bypass
         document.cookie = `sb-demo-auth=true; path=/; max-age=86400`;
-        router.push(destination);
-        router.refresh();
+        window.location.href = destination;
         return;
       }
 
