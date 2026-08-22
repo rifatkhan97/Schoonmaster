@@ -3,6 +3,8 @@ import StoreClient from './StoreClient';
 import type { Metadata } from 'next';
 import type { ProductCatalogItem, ServiceCatalogItem } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Cleaning Services & Supplies | Schoonmaster',
   description: 'Book professional cleaning services or order cleaning supplies directly from Schoonmaster BV.',
