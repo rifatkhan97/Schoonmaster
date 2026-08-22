@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import StoreClient from './store/StoreClient';
+import { DEMO_PRODUCTS, DEMO_SERVICES } from '@/lib/demoData';
 import type { Metadata } from 'next';
 import type { ProductCatalogItem, ServiceCatalogItem } from '@/types';
 
@@ -21,10 +22,12 @@ export default async function HomePage() {
       supabase.from('product_catalog').select('*').eq('tenant_id', DEFAULT_TENANT_ID).eq('is_active', true).order('name'),
       supabase.from('service_catalog').select('*').eq('tenant_id', DEFAULT_TENANT_ID).eq('is_active', true).order('name'),
     ]);
-    products = pRes.data ?? [];
-    services = sRes.data ?? [];
+    products = pRes.data && pRes.data.length > 0 ? pRes.data : DEMO_PRODUCTS;
+    services = sRes.data && sRes.data.length > 0 ? sRes.data : DEMO_SERVICES;
   } catch (err) {
-    console.error('Home page Supabase query error:', err);
+    console.error('Home page Supabase query error (using demo fallback):', err);
+    products = DEMO_PRODUCTS;
+    services = DEMO_SERVICES;
   }
 
   return (
