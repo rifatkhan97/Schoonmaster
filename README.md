@@ -8,7 +8,7 @@ Enterprise-grade operations automation platform and commercial e-commerce portal
 
 ### 🏢 Operations Architecture
 - **Multi-Tenant Foundation**: PostgreSQL schema isolation via `tenant_id` partitioning and Supabase Row Level Security (RLS).
-- **Role-Based Access Control (RBAC)**: Enforced via Next.js 16 proxy middleware and Supabase RLS JWT claims:
+- **Role-Based Access Control (RBAC)**: Enforced via Next.js 16 proxy middleware (`proxy.ts`) and Supabase RLS JWT claims:
   - `ADM`: Full System Administrator
   - `MGR`: Operations Manager / Supervisor
   - `CLN`: Field Technician / Cleaner
@@ -42,14 +42,13 @@ Enterprise-grade operations automation platform and commercial e-commerce portal
 
 ## 🛠️ Technology Stack
 
-- **Framework**: [Next.js 15 / 16 (App Router)](https://nextjs.org/)
+- **Framework**: Next.js 15 / 16 (App Router + Turbopack)
 - **Language**: TypeScript
 - **Styling**: Custom Vanilla CSS Tokens & Design System (`/app/globals.css`)
-- **Backend & Database**: [Supabase](https://supabase.com/) (Auth, PostgreSQL, Storage, Realtime, RLS)
-- **Payment Gateway**: [Mollie](https://www.mollie.com/) (iDEAL, Credit Card)
-- **Email Service**: [SendGrid](https://sendgrid.com/)
+- **Backend & Database**: Supabase (Auth, PostgreSQL, Storage, Realtime, RLS)
+- **Payment Gateway**: Mollie (iDEAL, Credit Card)
+- **Email Service**: SendGrid
 - **Offline & PWA**: `@ducanh2912/next-pwa`, Workbox, IndexedDB
-- **Validation & Math**: Zod, Date-fns, UUID
 
 ---
 
@@ -57,14 +56,13 @@ Enterprise-grade operations automation platform and commercial e-commerce portal
 
 ### Prerequisites
 - Node.js 18.x or 20.x
-- npm / yarn / pnpm
 
 ### Setup Instructions
 
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/rifatkhan97/Schoonmaster.git
-   cd Schoonmaster/schoonmaster-app
+   cd Schoonmaster
    ```
 
 2. **Install dependencies**:
@@ -87,6 +85,15 @@ Enterprise-grade operations automation platform and commercial e-commerce portal
    npm run dev
    ```
    Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## ☁️ Deployment on Vercel
+
+This repository is optimized for 1-click zero-configuration Vercel deployment:
+1. Import the repository `rifatkhan97/Schoonmaster` on Vercel.
+2. Add the environment variables from `.env.example` to your Vercel Project Settings.
+3. Deploy!
 
 ---
 
