@@ -30,11 +30,15 @@ const ROLE_HOME: Record<UserRole, string> = {
 };
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-  const pathname = request.nextUrl.pathname;
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const pathname = request.nextUrl.pathname;
 
   // Check if Supabase env vars are properly configured
   const isConfigured = Boolean(
@@ -48,32 +52,24 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/login', request.url));
       }
     }
-    return supabaseResponse;
+    return response;
   }
 
   try {
-    const supabase = createServerClient(
-      url!,
-      anonKey!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value)
-            );
-            supabaseResponse = NextResponse.next({ request });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            );
-          },
+    const supabase = createServerClient(url!, anonKey!, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
         },
-      }
-    );
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    });
 
-    // Refresh session — wrapped safely
     const { data } = await supabase.auth.getUser();
     const user = data?.user ?? null;
 
@@ -90,10 +86,10 @@ export async function middleware(request: NextRequest) {
           const home = ROLE_HOME[role] || '/';
           return NextResponse.redirect(new URL(home, request.url));
         } catch {
-          return supabaseResponse;
+          return response;
         }
       }
-      return supabaseResponse;
+      return response;
     }
 
     // All other routes require authentication
@@ -126,14 +122,14 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    supabaseResponse.headers.set('x-user-role', userRole);
-    supabaseResponse.headers.set('x-user-id', user.id);
-    supabaseResponse.headers.set('x-tenant-id', profile.tenant_id);
+    response.headers.set('x-user-role', userRole);
+    response.headers.set('x-user-id', user.id);
+    response.headers.set('x-tenant-id', profile.tenant_id);
 
-    return supabaseResponse;
+    return response;
   } catch (err) {
-    console.error('Middleware execution error:', err);
-    return supabaseResponse;
+    console.error('Middleware error:', err);
+    return response;
   }
 }
 
@@ -142,5 +138,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|sw.js|firebase-messaging-sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
-
-export const proxy = middleware;
