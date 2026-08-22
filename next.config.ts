@@ -6,54 +6,19 @@ const withPWA = withPWAInit({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  disable: process.env.NODE_ENV === "development",
-  workboxOptions: {
-    disableDevLogs: true,
-    runtimeCaching: [
-      // API routes — Network First (always try network, fall back to cache)
-      {
-        urlPattern: /^https:\/\/.*\/api\/.*/i,
-        handler: "NetworkFirst",
-        options: {
-          cacheName: "api-cache",
-          expiration: { maxEntries: 32, maxAgeSeconds: 60 * 5 }, // 5 min
-          networkTimeoutSeconds: 5,
-        },
-      },
-      // Static assets — Cache First
-      {
-        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff2|woff|ttf)$/i,
-        handler: "CacheFirst",
-        options: {
-          cacheName: "static-assets",
-          expiration: { maxEntries: 64, maxAgeSeconds: 60 * 60 * 24 * 30 }, // 30 days
-        },
-      },
-      // Google Fonts — Stale While Revalidate
-      {
-        urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
-        handler: "StaleWhileRevalidate",
-        options: {
-          cacheName: "google-fonts",
-          expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 365 }, // 1 year
-        },
-      },
-    ],
-  },
+  disable: true, // Disable PWA service worker during deployment to prevent browser 404 caching
 });
 
 const nextConfig: NextConfig = {
-  // Silence Turbopack/webpack conflict warning from next-pwa's webpack config
   turbopack: {},
   experimental: {
-    serverActions: { bodySizeLimit: "11mb" }, // allow 10MB image uploads + overhead
+    serverActions: { bodySizeLimit: "11mb" },
   },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "*.supabase.co" },
     ],
   },
-  // Security headers
   async headers() {
     return [
       {
