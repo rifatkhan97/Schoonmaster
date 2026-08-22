@@ -20,7 +20,8 @@ function mapsUrl(address: string) {
 
 export default async function CleanerDashboardPage() {
   const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+  const authUser = data?.user;
   if (!authUser) redirect('/login');
 
   const { data: profile } = await supabase

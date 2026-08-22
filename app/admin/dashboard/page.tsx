@@ -15,7 +15,8 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+  const authUser = data?.user;
   if (!authUser) redirect('/login');
 
   const { data: profile } = await supabase.from('users').select('tenant_id').eq('id', authUser.id).single();
