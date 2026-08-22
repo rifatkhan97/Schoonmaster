@@ -89,7 +89,14 @@ export async function POST(request: NextRequest) {
 
   // For online payments — create Mollie payment session
   if (['ONLINE_CARD', 'ONLINE_IDEAL'].includes(data.payment_method)) {
-    const mollie = createMollieClient({ apiKey: process.env.MOLLIE_API_KEY! });
+    const apiKey = process.env.MOLLIE_API_KEY;
+    if (!apiKey || apiKey.includes('placeholder')) {
+      return NextResponse.json({
+        error: 'Online payment gateway is not yet configured on this environment. Please choose cash payment or contact support.',
+      }, { status: 503 });
+    }
+
+    const mollie = createMollieClient({ apiKey });
 
     const mollieMethod = data.payment_method === 'ONLINE_IDEAL' ? 'ideal' : undefined;
 

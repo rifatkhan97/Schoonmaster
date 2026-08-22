@@ -71,8 +71,10 @@ export async function POST(request: NextRequest) {
 
   // Send confirmation email on successful payment
   if (newStatus === 'PAID' && order.payment_status !== 'PAID') {
-    try {
-      sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+    const sendgridKey = process.env.SENDGRID_API_KEY;
+    if (sendgridKey && !sendgridKey.includes('placeholder')) {
+      try {
+        sgMail.setApiKey(sendgridKey);
       await sgMail.send({
         to: order.customer_email,
         from: { email: process.env.SENDGRID_FROM_EMAIL!, name: process.env.SENDGRID_FROM_NAME ?? 'Schoonmaster' },
